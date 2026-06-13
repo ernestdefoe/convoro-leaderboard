@@ -3,9 +3,8 @@
 namespace Convoro\Ext\Leaderboard;
 
 use App\Models\User;
+use App\Support\ExtPage;
 use App\Support\Present;
-use App\Support\Settings;
-use App\Support\Theme;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +35,7 @@ class Extension extends ServiceProvider
                 $period = 'all';
             }
 
-            return response(self::page($period));
+            return self::page($period);
         });
     }
 
@@ -101,15 +100,8 @@ class Extension extends ServiceProvider
         return array_slice($out, 0, 50);
     }
 
-    private static function page(string $period): string
+    private static function page(string $period)
     {
-        $theme = Theme::css();
-        $palette = Theme::surfacePalette();
-        $chrome = Theme::chromeCss();
-        $header = Theme::siteHeader(['Leaderboard' => '/leaderboard']);
-        $font = Theme::fontStack((string) Settings::get('theme.font', 'Inter'));
-        $mode = htmlspecialchars((string) Settings::get('theme.mode', 'light'), ENT_QUOTES);
-        $name = htmlspecialchars((string) Settings::get('site.name', 'Convoro'), ENT_QUOTES);
         $e = fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
         $grad = [
             'linear-gradient(135deg,#f472b6,#db2777)', 'linear-gradient(135deg,#60a5fa,#2563eb)',
@@ -197,16 +189,9 @@ class Extension extends ServiceProvider
             $body = $podiumHtml.$contSec.$hmSec;
         }
 
-        return <<<HTML
-<!DOCTYPE html><html lang="en" data-theme="{$mode}"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Leaderboard · {$name}</title>
-<style>{$theme}
-{$palette}
-{$chrome}
-*{box-sizing:border-box}body{margin:0;font-family:{$font};background:rgb(var(--c-bg));color:rgb(var(--c-text))}
-a{color:inherit;text-decoration:none}
-.wrap{max-width:920px;margin:0 auto;padding:32px 20px 64px}
+        $css = <<<'CSS'
+.ext-frame a{color:inherit;text-decoration:none}
+.wrap{max-width:920px;margin:0 auto}
 h1{font-size:28px;margin:0 0 4px;letter-spacing:-.02em}.sub{color:rgb(var(--c-muted));margin:0 0 22px}
 .tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 30px;background:rgb(var(--c-surface));border:1px solid rgb(var(--c-border));border-radius:14px;padding:6px}
 .tab{padding:9px 16px;border-radius:9px;font-size:13px;font-weight:700;color:rgb(var(--c-text-2));transition:background .12s}
@@ -254,13 +239,12 @@ h1{font-size:28px;margin:0 0 4px;letter-spacing:-.02em}.sub{color:rgb(var(--c-mu
  .podium .pstat,.hm .meta{display:none}
  .hm .nm{max-width:none;flex:1}
 }
-</style></head><body>
-{$header}
-<div class="wrap">
-<h1>🏆 Leaderboard</h1><p class="sub">Top contributors by reputation — posts, topics and reactions received.</p>
-<div class="tabs">{$tabs}</div>
-{$body}
-</div></body></html>
-HTML;
+CSS;
+
+        $bodyHtml = '<div class="wrap">'
+            .'<h1>🏆 Leaderboard</h1><p class="sub">Top contributors by reputation — posts, topics and reactions received.</p>'
+            .'<div class="tabs">'.$tabs.'</div>'.$body.'</div>';
+
+        return ExtPage::render('Leaderboard', $bodyHtml, $css);
     }
 }
